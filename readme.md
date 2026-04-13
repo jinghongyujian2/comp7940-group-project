@@ -1,3 +1,4 @@
+# comp7940-group-project
 # Campus Event & Interest Bot
 
 ## 📌 Project Overview
@@ -5,10 +6,10 @@ This project is a **Python + SQLite + Telegram Bot** application designed for ca
 Key features:
 - User interest registration (flexible input formats)
 - Event recommendation (displays all events stored in the database)
+- Event recommendation by category or date (支持英文和中文关键词，大小写不敏感，模糊匹配)
+- Event recommendation based on user interests
 - Interest matching (finds peers with similar interests)
 - Chat logging (stores conversations in the database)
-- Event recommendation by category or date
-- Event recommendation based on user interests
 
 ## ⚙️ Requirements
 - Python 3.9+
@@ -39,8 +40,12 @@ ACCESS_TOKEN = <your-telegram-bot-token>
 4. Run the bot:
 python main.py
 
-💡 Example Usage
 
+---
+
+### 4. **Example Usage**
+```markdown
+💡 Example Usage
 
 Input:
 My interests are: AI, Music
@@ -73,12 +78,13 @@ Matched users:
 Alice (common interests: sports)
 Bob (common interests: arts)
 
+
 📂 Project Structure
 comp7940-group-project/
 │── init_db.py        # Database initialization (tables)
 │── init_events.py    # Insert sample events
 │── init_users.py     # Insert sample users
-│── main.py           # Telegram Bot logic
+│── chatbot.py        # Main bot logic (event recommendation, interests, matching)
 │── ChatGPT_HKBU.py   # GPT integration wrapper
 │── campus.db         # SQLite database file
 │── README.md         # Project documentation
