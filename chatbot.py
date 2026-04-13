@@ -37,16 +37,17 @@ def init_db():
     )""")
     conn.commit()
     conn.close()
+    logging.info("Database initialized successfully")
 
 # Event recommendation (with category/date filtering)
 def recommend_event(user_message):
+    logging.info("Processing event recommendation")
     conn = sqlite3.connect("campus.db")
     cursor = conn.cursor()
     msg_lower = user_message.lower()
 
-    # Category filter (English + Chinese keywords)
     categories = {
-        "ai": "tech",   # 把 AI 归到 Tech 类别
+        "ai": "tech",
         "tech": "tech",
         "sports": "sports",
         "arts": "arts",
@@ -66,23 +67,23 @@ def recommend_event(user_message):
             )
             events = cursor.fetchall()
             conn.close()
+            logging.info(f"Found {len(events)} events for category {cat}")
             return "\n".join([f"{e[0]} - {e[1]} @ {e[2]}: {e[3]}" for e in events]) or f"No {cat} events found."
 
-    # Date filter (YYYY-MM-DD)
     match = re.search(r"\d{4}-\d{2}-\d{2}", msg_lower)
     if match:
         date = match.group(0)
         cursor.execute("SELECT event_name, date, location, description FROM events WHERE date=?", (date,))
         events = cursor.fetchall()
         conn.close()
+        logging.info(f"Found {len(events)} events for date {date}")
         return "\n".join([f"{e[0]} - {e[1]} @ {e[2]}: {e[3]}" for e in events]) or f"No events found on {date}."
 
-    # Default: all events
     cursor.execute("SELECT event_name, date, location, description FROM events")
     events = cursor.fetchall()
     conn.close()
+    logging.info(f"Returning {len(events)} events (default)")
     return "\n".join([f"{e[0]} - {e[1]} @ {e[2]}: {e[3]}" for e in events]) or "No events available."
-
 
 # Save user interests
 def save_interest(user_id, username, user_message):
@@ -103,9 +104,11 @@ def save_interest(user_id, username, user_message):
     if existing:
         cursor.execute("UPDATE user_interests SET interests=?, updated_at=CURRENT_TIMESTAMP WHERE user_id=?",
                        (interests_clean, user_id))
+        logging.info(f"Updated interests for {username} ({user_id}): {interests_clean}")
     else:
         cursor.execute("INSERT INTO user_interests (user_id, username, interests) VALUES (?, ?, ?)",
                        (user_id, username, interests_clean))
+        logging.info(f"Inserted interests for {username} ({user_id}): {interests_clean}")
 
     conn.commit()
     conn.close()
@@ -113,6 +116,7 @@ def save_interest(user_id, username, user_message):
 
 # Match users with similar interests
 def match_interest(user_id):
+    logging.info(f"Performing interest match for user {user_id}")
     conn = sqlite3.connect("campus.db")
     cursor = conn.cursor()
     cursor.execute("SELECT interests FROM user_interests WHERE user_id=?", (user_id,))
@@ -132,10 +136,12 @@ def match_interest(user_id):
         if common:
             matches.append(f"{username} (common interests: {', '.join(common)})")
 
+    logging.info(f"Found {len(matches)} matches for user {user_id}")
     return "Matched users:\n" + "\n".join(matches) if matches else "No similar users found."
 
 # Recommend events based on user interests
 def recommend_by_interest(user_id):
+    logging.info(f"Recommending events by interest for user {user_id}")
     conn = sqlite3.connect("campus.db")
     cursor = conn.cursor()
     cursor.execute("SELECT interests FROM user_interests WHERE user_id=?", (user_id,))
@@ -154,11 +160,10 @@ def recommend_by_interest(user_id):
         event_name = e[0].lower()
         category = e[1].lower()
         description = e[4].lower()
-
-        # 检查兴趣是否出现在活动名称、类别或描述中
         if any(interest in event_name or interest in category or interest in description for interest in interests):
             matched.append(f"{e[0]} - {e[2]} @ {e[3]}: {e[4]}")
 
+    logging.info(f"Found {len(matched)} events matching interests for user {user_id}")
     return "Recommended events based on your interests:\n" + "\n".join(matched) if matched else "No events match your interests."
 
 # Message handler
@@ -167,6 +172,8 @@ async def callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.message.from_user.id
     username = update.message.from_user.username
     msg_lower = user_message.lower()
+
+    logging.info(f"Received message from {username} ({user_id}): {user_message}")
 
     if "recommend by interest" in msg_lower or "根据我的兴趣" in msg_lower:
         response = recommend_by_interest(user_id)
@@ -180,6 +187,7 @@ async def callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         response = gpt.submit(user_message)
 
     await update.message.reply_text(response)
+    logging.info(f"Bot response: {response}")
 
     conn = sqlite3.connect("campus.db")
     cursor = conn.cursor()
@@ -187,6 +195,7 @@ async def callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                    (user_id, username, user_message, response))
     conn.commit()
     conn.close()
+    logging.info("Message logged into database successfully")
 
 def main():
     logging.basicConfig(level=logging.INFO)
@@ -197,6 +206,7 @@ def main():
     global gpt
     gpt = ChatGPT(config)
     init_db()
+    logging.info("Starting bot polling...")
     app.run_polling()
 
 if __name__ == '__main__':
